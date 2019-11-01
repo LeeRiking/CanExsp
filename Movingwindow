@@ -1,0 +1,44 @@
+function Perform= Movingwindow(Data,SVMFun,FunPara,index,k)
+%DataType=2 or 4  %X,Y形式
+if ~((Data.Type ==2) || (Data.Type ==4))
+    disp('Error: Data.Type must be 2 or 4'); return;
+end
+% indices = crossvalind('Kfold',Data.X(:,1),k); %矩阵k折分类后的索引值
+
+Perform.Sen = 0;Perform.Spe = 0;Perform.gmean = 0;
+Perform.Acc = 0;FP = 0;FN=0;TP=0;TN=0;TFP=0;TFN=0;  
+DataTrain.Type = 2;
+h=index(2)/k;%%验证集个数
+Val_PredictY = zeros(index(2),1);
+Real_Y = zeros(index(2),1);
+for i = 1:1:h
+    DataTrain.X = Data.X(1+k*(i-1):(index(3)+k*(i-1)),:);    
+    DataTrain.Y = Data.Y(1+k*(i-1):(index(3)+k*(i-1)),:);
+    DataTest.X = Data.X((index(3)+k*(i-1)+1):(index(3)+k*i),:);%%验证集
+    DataTest.Y = Data.Y((index(3)+k*(i-1)+1):(index(3)+k*i),:);%%验证集
+
+    %SVMFun训练和预测
+    PredictY=SVMFun( DataTest.X,DataTrain,FunPara);             
+% %  
+    %统计准确分类值
+    Val_PredictY((i-1)*k+1:i*k) = PredictY;
+    Real_Y((i-1)*k+1:i*k) = DataTest.Y;
+end
+    Perform.Acc = 100*sum(Real_Y == Val_PredictY)/length(Real_Y);
+    FP = sum(Val_PredictY(Real_Y==-1)==1);   %假正
+    FN = sum(Val_PredictY(Real_Y==1)==-1);   %假负
+    TP = sum(Val_PredictY(Real_Y==1)==1);    %真正
+    TN = sum(Val_PredictY(Real_Y==-1)==-1);  %真负
+    TFP = sum(Real_Y==1);                 %实际为正=真正+假负=TP+FN
+    TFN = sum(Real_Y==-1);                %实际为负=真负+假正=TN+FP
+    if TFP==0,Sen = 0;else Sen = 100*TP/TFP;end
+    if TFN==0,Spe = 0;else Spe = 100*TN/TFN;end
+    Perform.Sen = Sen;
+    Perform.Spe = Spe;
+    Perform.gmean = sqrt(Sen*Spe);
+end
+
+
+% Perform.Sen = Perform.Sen/k*100;
+% Perform.Spe = Perform.Spe/k*100;
+% Perform.gmean = Perform.gmean/k*100;
