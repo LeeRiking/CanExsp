@@ -1,0 +1,78 @@
+function [FunPara,Best_AC] = MVNoKfoldParaSearch(Data,SVMFun,FunPara,index,k)
+% 本函数为Grid寻参函数，1算法参数+1核参数
+% 非K-fold寻参方式
+%FunPara.p1为寻参的参数；FunPara.kerfPara.pars为寻参的核参数（RBF）
+% 模板函数将作为SVR算法的寻优的参数，用该模板将SVMFun所需寻参替换到相应位置 
+    IsFile = 0;
+    if nargin==4,IsFile = 1;end
+%%变量初始化  
+    Best_AC = -eps; %%防止AC=0跳过循环
+    Proc = 0;Step = 0;
+    MaxStep = 8;  
+    if FunPara.pnum == 1
+        ForLoop1 =  -5:5;
+        ForLoop2 = 0;
+    elseif FunPara.pnum == 2
+        ForLoop1 = -6:6;
+        ForLoop2 = -5:5;
+    end
+    %%为了计算算法时间
+%     Times = ones(length(ForLoop1),length(ForLoop2));
+    %自动识别核参数来自适应决定是否要遍历核参数q
+    if strcmp(FunPara.kerfPara.type,'lin'),ForLoopPara = 0;
+    else
+        ForLoopPara = -8:6;
+    end
+    Timeq = ones(length(ForLoopPara),1);indexq=1;
+    BreakAC = 97;
+    
+    for i = ForLoop1 
+        for j = ForLoop2
+            for Para = ForLoopPara
+                FunPara.p1 = 5^i;
+                if FunPara.pnum == 2,FunPara.p2 = 2^j;end
+                FunPara.kerfPara.pars = 2^Para;
+                 tic;
+                Perform = Movingwindow(Data,SVMFun,FunPara,index,k);
+%                 Times(i+MaxStep+1,j+MaxStep+1) = toc;
+                Timeq(indexq) = toc;
+%                 AC = sum(DataTest.Y == PredictY)/length(PredictY);
+                AC = Perform.Acc;
+                if AC > Best_AC
+                    Best_AC = AC, Step = 0;
+                    p1 = 5^i;
+                    if FunPara.pnum == 2,p2 = 2^j;end
+                    q= 2^Para;
+                    if Best_AC > BreakAC,break;end %如果到1，则跳出循环
+                else Step = Step+1;
+                end
+                indexq = indexq+1;
+            end
+            if Best_AC > BreakAC,break;end
+        end            
+        if Best_AC > BreakAC,break;end
+        if Step>100*4*MaxStep*length(ForLoopPara),fprintf('Step %f is biger than XXX, Process is break.\n',Step); break;end
+        Proc = Proc + 1/(4*MaxStep+1);
+        
+        %%显示输出
+        if FunPara.pnum == 1,fprintf('Process %f,p1:%f,q:%f\n',Proc,p1,q);
+        elseif FunPara.pnum == 2,fprintf('Process %f,p1:%f,p2:%f,q:%f\n',Proc,p1,p2,q);end
+    end
+    fprintf('Parameter Seaching is over!\n No fold Experment Processing Starting...\n');
+  
+    FunPara.c = p1;
+    FunPara.kerfPara.pars = q;
+    Sen = Perform.Sen;
+    Spe = Perform.Spe;
+    gmean = sqrt(Sen*Spe);
+    
+%     fprintf('mTime:%f,c:%f,q:%f\n',sum(time)/Count/k,c,q);
+     fprintf('p1:%f,q:%f\n',p1,q);
+    fprintf('mAC:%f,sAC:%f,mSen:%f,sSen:%f,mSpe:%f,sSpe:%f,mGmean:%f,sGmean:%f\n',...
+        mean(AC), std(AC),mean(Sen), std(Sen),mean(Spe), std(Spe),mean(gmean), std(gmean));
+%     if IsFile
+%     fprintf(fid,'mTime:%f,c:%f,q:%f\n',sum(time)/Count/k,c,q);
+%     fprintf(fid,'mAC:%f,sAC:%f,mSen:%f,sSen:%f,mSpe:%f,sSpe:%f,mGmean:%f,sGmean:%f\n\n',...
+%         mean(Ac), std(Ac),mean(Sen), std(Sen),mean(Spe), std(Spe),mean(gmean), std(gmean));
+%     end
+  end
