@@ -5,4 +5,4 @@ In my paper, we use multi data sources for stock prediction, which includes exch
 
 The other two python files are used for text data preprocessing.
 
-Prediction code is written with matlab. And it is began from "RunMainfortimeseries.m"
+Prediction code is written with matlab. And it is began from "RunMainfortimeseries.m".
